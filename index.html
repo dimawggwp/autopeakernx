@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Планировщик потоков Narxoz</title>
     <style>
-        /* (все стили как в предыдущей версии, но я немного сокращу для экономии места) */
+        /* (все стили как в предыдущей версии) */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f7fa; color: #222; padding: 20px; transition: background 0.3s; }
         body.dark { background: #1e1e1e; color: #eee; }
@@ -35,6 +35,669 @@
         body.dark .group-table th { background: #3d3d3d; }
         .group-table td { padding: 8px 12px; border-bottom: 1px solid #eee; }
         body.dark .group-table td { border-color: #444; }
+        .group-table tr.selected { background: #e3f2fd; }
+        body.dark .group-table tr.selected { background: #1a3a5a; }
+        .conflict-badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .conflict-yes { background: #ffebee; color: #b71c1c; }
+        .conflict-no  { background: #e8f5e9; color: #1b5e20; }
+        body.dark .conflict-yes { background: #4a2a2a; color: #ff8a80; }
+        body.dark .conflict-no  { background: #2a4a2a; color: #81c784; }
+        .seats { font-weight: bold; text-align: center; }
+        .seats-full { color: #e53935; }
+        .seats-low  { color: #f57c00; }
+        .seats-ok   { color: #2e7d32; }
+        .seats-unknown { color: #888; }
+        .schedule-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin: 20px 0; }
+        .day-col { border: 1px solid #ddd; border-radius: 10px; padding: 10px; min-height: 140px; background: #f9f9f9; }
+        body.dark .day-col { background: #2a2a2a; border-color: #444; }
+        .day-title { font-weight: bold; text-align: center; margin-bottom: 8px; font-size: 15px; }
+        .lesson-card { font-size: 12px; background: #e3f2fd; padding: 6px 8px; border-radius: 6px; margin-bottom: 6px; line-height: 1.3; }
+        body.dark .lesson-card { background: #1a3a5a; }
+        .lesson-card strong { display: block; font-size: 13px; }
+        .empty-day { color: #ccc; text-align: center; font-size: 13px; padding-top: 20px; }
+        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; border-radius: 20px; padding: 30px; box-shadow: 0 8px 60px rgba(0,0,0,0.4); z-index: 1000000; max-width: 900px; width: 95%; max-height: 85vh; overflow-y: auto; }
+        body.dark .modal { background: #2d2d2d; color: #eee; }
+        .modal-close { float: right; background: #f44336; color: #fff; border: none; border-radius: 6px; padding: 6px 18px; cursor: pointer; }
+        .modal h2 { margin-top: 0; }
+        @media (max-width: 700px) { .container { padding: 15px; } .schedule-grid { grid-template-columns: repeat(2, 1fr); } .group-table { font-size: 12px; } .group-table th, .group-table td { padding: 4px 6px; } }
+        @media (max-width: 450px) { .schedule-grid { grid-template-columns: 1fr; } }
+        .loader { text-align: center; padding: 40px; color: #888; }
+        .bookmarklet-box { background: #f0f0f0; padding: 12px; border-radius: 8px; max-width: 600px; margin: 10px auto; text-align: left; font-size: 13px; word-break: break-all; }
+        body.dark .bookmarklet-box { background: #3d3d3d; }
+        .bookmarklet-box code { display: block; background: #fff; padding: 8px; border-radius: 4px; margin: 6px 0; overflow-x: auto; white-space: pre-wrap; font-size: 12px; }
+        body.dark .bookmarklet-box code { background: #1e1e1e; color: #eee; }
+        .update-btn-group { display: flex; gap: 12px; flex-wrap: wrap; margin: 15px 0; align-items: center; }
+        .step-indicator { background: #fff3cd; border: 1px solid #ffeeba; border-radius: 8px; padding: 12px 16px; margin: 15px 0; font-size: 14px; }
+        body.dark .step-indicator { background: #2d2d2d; border-color: #555; color: #eee; }
+        .import-area { margin: 15px 0; padding: 15px; background: #f9f9f9; border-radius: 8px; border: 1px dashed #ccc; }
+        body.dark .import-area { background: #2a2a2a; border-color: #555; }
+        .import-area textarea { width: 100%; height: 120px; padding: 8px; font-family: monospace; font-size: 13px; border-radius: 6px; border: 1px solid #ccc; resize: vertical; }
+        body.dark .import-area textarea { background: #1e1e1e; color: #eee; border-color: #555; }
+        .import-area .btn-group { margin-top: 8px; display: flex; gap: 10px; flex-wrap: wrap; }
+        .manual-json-btn { background: #673ab7; color: #fff; border: none; padding: 6px 16px; border-radius: 6px; cursor: pointer; }
+        .manual-json-btn:hover { background: #512da8; }
+    </style>
+</head>
+<body>
+<div class="container" id="app">
+    <h1>
+        📊 Планировщик потоков Narxoz
+        <span class="header-actions">
+            <button class="btn btn-secondary btn-sm" id="themeToggle">🌙</button>
+            <button class="btn btn-warning btn-sm" id="exportCsv">📥 CSV</button>
+            <button class="btn btn-primary btn-sm" id="showSchedule">📅 Расписание</button>
+            <button class="btn btn-danger btn-sm" id="clearData">🗑️ Очистить</button>
+        </span>
+    </h1>
+
+    <div id="stats" class="stats"></div>
+
+    <div class="update-btn-group">
+        <button class="btn btn-success" id="updateDataBtn">🔄 Обновить данные с DU</button>
+        <span style="font-size:13px; color:#888;">(откроет DU, нажмите букмарклет)</span>
+        <button class="btn btn-secondary" id="showImportBtn">📥 Ручной импорт JSON</button>
+    </div>
+
+    <div id="stepGuide" class="step-indicator" style="display:none;">
+        <b>📌 Как обновить:</b>
+        <ol style="margin:8px 0 0 20px; line-height:1.6;">
+            <li>Убедитесь, что вы авторизованы на <b>du.narxoz.kz</b> и находитесь на странице с потоками.</li>
+            <li>Нажмите на закладку <b>«Сборщик Narxoz»</b> (букмарклет).</li>
+            <li>Данные соберутся, и вы автоматически вернётесь на эту страницу.</li>
+        </ol>
+    </div>
+
+    <!-- Область ручного импорта -->
+    <div id="importArea" class="import-area" style="display:none;">
+        <label for="jsonInput"><b>Вставьте JSON с данными</b> (скопируйте из консоли или из файла):</label>
+        <textarea id="jsonInput" placeholder='{"streams": [...], "plan": {...}}'></textarea>
+        <div class="btn-group">
+            <button class="btn btn-success" id="importJsonBtn">📥 Загрузить данные</button>
+            <button class="btn btn-secondary" id="closeImportBtn">✕ Закрыть</button>
+            <span style="font-size:12px; color:#888; margin-left:10px; align-self:center;">(можно вставить JSON, полученный на DU через консоль)</span>
+        </div>
+    </div>
+
+    <div class="filters" id="filters">
+        <input type="text" id="filterText" placeholder="🔍 Фильтр (дисциплина, преподаватель)">
+        <select id="dayFilter">
+            <option value="">Все дни</option>
+            <option value="ПН">ПН</option><option value="ВТ">ВТ</option>
+            <option value="СР">СР</option><option value="ЧТ">ЧТ</option>
+            <option value="ПТ">ПТ</option><option value="СБ">СБ</option>
+            <option value="ВС">ВС</option>
+        </select>
+        <button class="btn btn-success btn-sm" id="autoSelect">⚡ Автовыбор</button>
+        <button class="btn btn-secondary btn-sm" id="refreshView">🔄 Обновить</button>
+    </div>
+
+    <div id="content">
+        <div class="loader">Загрузка...</div>
+    </div>
+
+    <div style="margin-top:20px; font-size:13px; color:#888; border-top:1px solid #ddd; padding-top:12px; display:flex; justify-content:space-between; flex-wrap:wrap;">
+        <span>💾 Данные хранятся локально в браузере.</span>
+        <span id="updateTime"></span>
+    </div>
+</div>
+
+<script>
+    (function() {
+        'use strict';
+
+        // ================================================================
+        // 0.  НАСТРОЙКА – ИЗМЕНИТЕ ЭТУ ССЫЛКУ НА ВАШ GitHub Pages
+        // ================================================================
+        const REDIRECT_URL = 'https://dimawggwp.github.io/autopeakernx/'; // ← ЗАМЕНИТЕ НА СВОЙ URL
+
+        // ================================================================
+        // 1.  КОНСТАНТЫ
+        // ================================================================
+        const STORAGE_KEY = 'narxoz_data';
+        const PLAN_KEY = 'narxoz_plan';
+        const DAYS = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
+
+        // ================================================================
+        // 2.  РАБОТА С ХРАНИЛИЩЕМ
+        // ================================================================
+        function loadData() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && Array.isArray(parsed.streams)) {
+                        return parsed;
+                    }
+                }
+            } catch (e) {}
+            return null;
+        }
+
+        function saveData(data) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+
+        function loadPlan() {
+            try {
+                const raw = localStorage.getItem(PLAN_KEY);
+                return raw ? JSON.parse(raw) : {};
+            } catch (e) { return {}; }
+        }
+
+        function savePlan(plan) {
+            localStorage.setItem(PLAN_KEY, JSON.stringify(plan));
+        }
+
+        // ================================================================
+        // 3.  ВРЕМЯ И КОНФЛИКТЫ
+        // ================================================================
+        function toMinutes(timeStr) {
+            if (!timeStr) return 0;
+            const parts = timeStr.split(':');
+            return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+        }
+
+        function overlap(a, b) {
+            if (a.day && b.day && a.day !== b.day) return false;
+            const aStart = toMinutes(a.start);
+            const aEnd = toMinutes(a.end);
+            const bStart = toMinutes(b.start);
+            const bEnd = toMinutes(b.end);
+            return aStart < bEnd && bStart < aEnd;
+        }
+
+        function hasConflict(scheduleA, scheduleB) {
+            for (const a of scheduleA) {
+                for (const b of scheduleB) {
+                    if (overlap(a, b)) return true;
+                }
+            }
+            return false;
+        }
+
+        function getConflicts(stream, plan, allStreams) {
+            const conflicts = [];
+            for (const [code, ids] of Object.entries(plan)) {
+                for (const id of ids) {
+                    const other = allStreams.find(s => s.streamId === id);
+                    if (other && hasConflict(stream.schedule, other.schedule)) {
+                        conflicts.push(code);
+                    }
+                }
+            }
+            return conflicts;
+        }
+
+        // ================================================================
+        // 4.  РЕНДЕРИНГ
+        // ================================================================
+        let allStreams = [];
+        let plan = {};
+
+        function render() {
+            const content = document.getElementById('content');
+            const statsDiv = document.getElementById('stats');
+            const timeSpan = document.getElementById('updateTime');
+            const stepGuide = document.getElementById('stepGuide');
+
+            const data = loadData();
+            if (!data) {
+                content.innerHTML = `
+                    <div style="text-align:center; padding:60px 20px; color:#888;">
+                        <h2>📭 Нет данных</h2>
+                        <p>Чтобы загрузить данные, нажмите <b>«Обновить данные с DU»</b> и следуйте инструкции.</p>
+                        <p style="font-size:14px; margin-top:10px;">
+                            <span style="background:#f0f0f0; padding:4px 12px; border-radius:20px;">Букмарклет установится автоматически</span>
+                        </p>
+                        <p style="margin-top:10px; font-size:13px;">Или используйте <b>«Ручной импорт JSON»</b>.</p>
+                    </div>
+                `;
+                statsDiv.innerHTML = '';
+                timeSpan.textContent = '';
+                stepGuide.style.display = 'none';
+                return;
+            }
+
+            allStreams = data.streams || [];
+            plan = loadPlan();
+
+            const groups = {};
+            for (const s of allStreams) {
+                const code = s.disciplineCode || 'Без названия';
+                if (!groups[code]) groups[code] = [];
+                groups[code].push(s);
+            }
+
+            const total = Object.keys(groups).length;
+            const selectedCount = Object.values(plan).reduce((sum, ids) => sum + ids.length, 0);
+            let conflictCount = 0;
+            for (const [code, ids] of Object.entries(plan)) {
+                for (const id of ids) {
+                    const stream = allStreams.find(s => s.streamId === id);
+                    if (stream) {
+                        const confs = getConflicts(stream, plan, allStreams);
+                        if (confs.length > 0) conflictCount++;
+                    }
+                }
+            }
+            statsDiv.innerHTML = `
+                <span class="stat">📚 Дисциплин: ${total}</span>
+                <span class="stat">✅ Выбрано: ${selectedCount}</span>
+                <span class="stat">⚠️ Конфликтов: ${conflictCount}</span>
+                <span class="stat">🕒 ${new Date().toLocaleString()}</span>
+            `;
+            timeSpan.textContent = `Обновлено: ${new Date().toLocaleString()}`;
+            stepGuide.style.display = 'block';
+
+            let html = '';
+            for (const [code, streams] of Object.entries(groups)) {
+                const selectedIds = plan[code] || [];
+                const hasSelected = selectedIds.length > 0;
+                html += `<div class="group" data-code="${code}">
+                    <div class="group-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'table' : 'none'">
+                        <span>${code}</span>
+                        <span>${hasSelected ? `✅ выбрано ${selectedIds.length}` : ''}  ▼</span>
+                    </div>
+                    <table class="group-table" style="display:table;">
+                        <thead><tr>
+                            <th style="width:50px;">Выбор</th>
+                            <th>Преподаватель</th>
+                            <th>Время / Аудитория</th>
+                            <th style="width:60px;text-align:center;">Мест</th>
+                            <th style="width:130px;text-align:center;">Статус</th>
+                        </tr></thead>
+                        <tbody>
+                `;
+                for (const s of streams) {
+                    const checked = selectedIds.includes(s.streamId) ? 'checked' : '';
+                    const confs = getConflicts(s, plan, allStreams);
+                    const conflictText = confs.length ? `⚠️ ${confs.join(', ')}` : '✅';
+                    const conflictClass = confs.length ? 'conflict-yes' : 'conflict-no';
+                    const scheduleStr = s.schedule.map(t => `${t.day || ''} ${t.start}-${t.end}`).join(', ');
+                    const locationStr = s.location ? `📍 ${s.location}` : '';
+                    const seats = s.seatsLeft;
+                    let seatsClass = 'seats-unknown';
+                    if (seats === -1) seatsClass = 'seats-unknown';
+                    else if (seats <= 0) seatsClass = 'seats-full';
+                    else if (seats <= 5) seatsClass = 'seats-low';
+                    else seatsClass = 'seats-ok';
+                    const seatsDisplay = seats === -1 ? '—' : seats;
+                    const rowClass = checked ? 'selected' : '';
+                    html += `
+                        <tr class="${rowClass}" data-teacher="${s.teacherName.toLowerCase()}" data-schedule="${scheduleStr.toLowerCase()}">
+                            <td><input type="checkbox" data-code="${code}" data-stream="${s.streamId}" ${checked}></td>
+                            <td>${s.teacherName}</td>
+                            <td>${scheduleStr} ${locationStr}</td>
+                            <td class="seats ${seatsClass}">${seatsDisplay}</td>
+                            <td style="text-align:center;"><span class="conflict-badge ${conflictClass}">${conflictText}</span> ${s.status ? ' | ' + s.status : ''}</td>
+                        </tr>
+                    `;
+                }
+                html += `</tbody></table></div>`;
+            }
+            content.innerHTML = html;
+
+            // Чекбоксы
+            document.querySelectorAll('#content input[type="checkbox"]').forEach(cb => {
+                cb.addEventListener('change', function() {
+                    const code = this.dataset.code;
+                    const streamId = this.dataset.stream;
+                    if (!plan[code]) plan[code] = [];
+                    if (this.checked) {
+                        if (!plan[code].includes(streamId)) plan[code].push(streamId);
+                    } else {
+                        plan[code] = plan[code].filter(id => id !== streamId);
+                        if (plan[code].length === 0) delete plan[code];
+                    }
+                    savePlan(plan);
+                    render();
+                });
+            });
+
+            // Фильтры
+            const filterInput = document.getElementById('filterText');
+            filterInput.addEventListener('input', function() {
+                const val = this.value.toLowerCase();
+                document.querySelectorAll('.group').forEach(group => {
+                    const text = group.textContent.toLowerCase();
+                    group.style.display = text.includes(val) ? 'block' : 'none';
+                });
+            });
+
+            document.getElementById('dayFilter').addEventListener('change', function() {
+                const day = this.value.toLowerCase();
+                document.querySelectorAll('.group-table tbody tr').forEach(row => {
+                    const schedule = row.dataset.schedule || '';
+                    if (day === '' || schedule.includes(day)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+
+            document.getElementById('autoSelect').addEventListener('click', function() {
+                const newPlan = {};
+                for (const [code, ids] of Object.entries(plan)) {
+                    newPlan[code] = [...ids];
+                }
+                for (const [code, streams] of Object.entries(groups)) {
+                    if (newPlan[code] && newPlan[code].length > 0) continue;
+                    const sorted = [...streams].sort((a,b) => b.seatsLeft - a.seatsLeft);
+                    for (const s of sorted) {
+                        const confs = getConflicts(s, newPlan, allStreams);
+                        if (confs.length === 0 && s.seatsLeft !== 0) {
+                            newPlan[code] = [s.streamId];
+                            break;
+                        }
+                    }
+                }
+                savePlan(newPlan);
+                plan = newPlan;
+                render();
+            });
+        }
+
+        // ================================================================
+        // 5.  ДОПОЛНИТЕЛЬНЫЕ ДЕЙСТВИЯ
+        // ================================================================
+        function showScheduleModal() {
+            const data = loadData();
+            if (!data) return alert('Нет данных.');
+            const streams = data.streams || [];
+            const plan = loadPlan();
+            const selected = [];
+            for (const [code, ids] of Object.entries(plan)) {
+                for (const id of ids) {
+                    const s = streams.find(st => st.streamId === id);
+                    if (s) selected.push({ ...s, disciplineCode: code });
+                }
+            }
+            if (selected.length === 0) {
+                alert('Нет выбранных потоков.');
+                return;
+            }
+
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <button class="modal-close" onclick="this.closest('.modal').remove()">✕ Закрыть</button>
+                <h2>📅 Ваше расписание</h2>
+                <div class="schedule-grid">
+                    ${DAYS.map(day => {
+                        const items = selected.filter(s => s.schedule.some(t => t.day === day));
+                        return `<div class="day-col">
+                            <div class="day-title">${day}</div>
+                            ${items.length === 0 ? '<div class="empty-day">—</div>' : 
+                                items.map(item => {
+                                    const times = item.schedule.filter(t => t.day === day).map(t => `${t.start}-${t.end}`).join(', ');
+                                    return `<div class="lesson-card"><strong>${item.disciplineCode}</strong>${item.teacherName}<br><span style="color:#555;font-size:11px;">${times}</span></div>`;
+                                }).join('')
+                            }
+                        </div>`;
+                    }).join('')}
+                </div>
+            `;
+            document.body.appendChild(modal);
+            if (document.body.classList.contains('dark')) {
+                modal.style.background = '#2d2d2d';
+                modal.style.color = '#eee';
+            }
+        }
+
+        function exportCSV() {
+            const data = loadData();
+            if (!data) return alert('Нет данных.');
+            const streams = data.streams || [];
+            const plan = loadPlan();
+            const rows = ['Дисциплина,Преподаватель,День,Начало,Конец,Аудитория,Мест'];
+            for (const [code, ids] of Object.entries(plan)) {
+                for (const id of ids) {
+                    const s = streams.find(st => st.streamId === id);
+                    if (s) {
+                        for (const slot of s.schedule) {
+                            rows.push(`${code},${s.teacherName},${slot.day || ''},${slot.start},${slot.end},${s.location || ''},${s.seatsLeft}`);
+                        }
+                    }
+                }
+            }
+            const csv = rows.join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'plan.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function clearAllData() {
+            if (confirm('Удалить все данные и план?')) {
+                localStorage.removeItem(STORAGE_KEY);
+                localStorage.removeItem(PLAN_KEY);
+                render();
+            }
+        }
+
+        // ================================================================
+        // 6.  ТЁМНАЯ ТЕМА
+        // ================================================================
+        function toggleTheme() {
+            document.body.classList.toggle('dark');
+            const btn = document.getElementById('themeToggle');
+            btn.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+        }
+
+        // ================================================================
+        // 7.  ОБНОВЛЕНИЕ ДАННЫХ (кнопка + приём из URL + ручной импорт)
+        // ================================================================
+
+        function loadDataFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const encoded = urlParams.get('data');
+            if (!encoded) return false;
+            try {
+                const json = decodeURIComponent(atob(encoded));
+                const data = JSON.parse(json);
+                if (data && Array.isArray(data.streams)) {
+                    saveData(data);
+                    if (data.plan) {
+                        savePlan(data.plan);
+                    }
+                    window.history.replaceState({}, '', window.location.pathname);
+                    return true;
+                }
+            } catch (e) {
+                console.warn('Не удалось распарсить данные из URL', e);
+            }
+            return false;
+        }
+
+        function importJsonFromText(jsonText) {
+            try {
+                const data = JSON.parse(jsonText);
+                if (data && Array.isArray(data.streams)) {
+                    saveData(data);
+                    if (data.plan) {
+                        savePlan(data.plan);
+                    }
+                    render();
+                    document.getElementById('importArea').style.display = 'none';
+                    alert('✅ Данные успешно загружены!');
+                } else {
+                    alert('❌ Неверный формат: ожидается объект с полем "streams".');
+                }
+            } catch (e) {
+                alert('❌ Ошибка парсинга JSON: ' + e.message);
+            }
+        }
+
+        // Генерация букмарклета (использует REDIRECT_URL)
+        function generateBookmarkletCode() {
+            const script = `
+                (function() {
+                    const d = document;
+                    function g(v) { return d.querySelector(v); }
+                    function ga(v) { return d.querySelectorAll(v); }
+
+                    // 1. Пытаемся найти данные в глобальных переменных
+                    function parseGlobal() {
+                        const win = window;
+                        const data = { streams: [] };
+                        if (win.teachers && win.times) {
+                            const teachers = win.teachers;
+                            const times = win.times;
+                            const disciplines = win.disciplines || [];
+                            for (let i = 0; i < teachers.length; i++) {
+                                const t = teachers[i];
+                                const time = times[i] || {};
+                                data.streams.push({
+                                    disciplineCode: disciplines[i] || 'Неизвестно',
+                                    streamId: 's-' + (i + 1),
+                                    teacherName: t,
+                                    seatsLeft: -1,
+                                    location: '',
+                                    status: '',
+                                    schedule: [{ day: time.day || '', start: time.start || '', end: time.end || '' }]
+                                });
+                            }
+                        }
+                        return data;
+                    }
+
+                    // 2. Парсинг DOM
+                    function parseDOM() {
+                        const streams = [];
+                        const cards = ga('.stream-card, .stream-item, [class*="stream"], .flow-item, .course-stream');
+                        cards.forEach(c => {
+                            const discipline = g('.discipline-name, .course-title, h4', c)?.textContent?.trim() || 'Неизвестно';
+                            const location = g('.location, .room, .auditorium', c)?.textContent?.trim() || '';
+                            const cap = g('.capacity, .seats, .count', c)?.textContent?.trim() || '';
+                            const status = g('.status, .state, .badge', c)?.textContent?.trim() || '';
+                            const teacher = g('.teacher, .instructor', c)?.textContent?.trim() || 'Не указан';
+                            const timeText = g('.time, .schedule', c)?.textContent?.trim() || '';
+                            let seatsLeft = 0;
+                            const m = cap.match(/(\\d+)\\s*\\/\\s*(\\d+)/);
+                            if (m) seatsLeft = parseInt(m[1], 10);
+                            else seatsLeft = parseInt(cap, 10) || 0;
+                            const schedule = parseSchedule(timeText);
+                            streams.push({
+                                disciplineCode: discipline,
+                                streamId: c.dataset.streamId || 's-' + Date.now() + '-' + Math.random(),
+                                teacherName: teacher,
+                                seatsLeft: seatsLeft,
+                                location: location,
+                                status: status,
+                                schedule: schedule
+                            });
+                        });
+                        return streams;
+                    }
+
+                    function parseSchedule(text) {
+                        const slots = [];
+                        const parts = text.split(',').map(s => s.trim());
+                        parts.forEach(p => {
+                            const m = p.match(/([А-ЯЁа-яё]{2,3})\\s+(\\d{2}:\\d{2})\\s*[-–]\\s*(\\d{2}:\\d{2})/);
+                            if (m) slots.push({ day: m[1], start: m[2], end: m[3] });
+                        });
+                        return slots;
+                    }
+
+                    let streams = [];
+                    const globalData = parseGlobal();
+                    if (globalData.streams.length) {
+                        streams = globalData.streams;
+                    } else {
+                        streams = parseDOM();
+                    }
+
+                    if (!streams.length) {
+                        alert('Не удалось найти данные. Попробуйте обновить страницу или перейти на страницу регистрации.');
+                        return;
+                    }
+
+                    let plan = {};
+                    try { plan = JSON.parse(localStorage.getItem('narxoz_plan') || '{}'); } catch(e) {}
+
+                    const data = { streams, plan };
+                    const json = JSON.stringify(data);
+                    const encoded = btoa(encodeURIComponent(json));
+                    window.location.href = '${REDIRECT_URL}?data=' + encoded;
+                })();
+            `;
+            return 'javascript:' + encodeURIComponent(script.replace(/\s+/g, ' ').trim());
+        }
+
+        // Кнопка "Обновить данные с DU"
+        document.getElementById('updateDataBtn').addEventListener('click', function() {
+            window.open('https://du.narxoz.kz', '_blank');
+            document.getElementById('stepGuide').style.display = 'block';
+            const bookmarkletCode = generateBookmarkletCode();
+            alert(
+                '📌 Инструкция:\n\n' +
+                '1. Перейдите на du.narxoz.kz и авторизуйтесь.\n' +
+                '2. Откройте страницу с потоками (например, "Регистрация" или "Посмотреть УП").\n' +
+                '3. Нажмите на закладку "Сборщик Narxoz" (букмарклет).\n\n' +
+                'Если у вас нет букмарклета, скопируйте код ниже и создайте новую закладку:\n\n' +
+                bookmarkletCode
+            );
+        });
+
+        // Проверка данных из URL при загрузке
+        window.addEventListener('load', function() {
+            const loaded = loadDataFromURL();
+            if (loaded) {
+                alert('✅ Данные успешно обновлены!');
+            }
+            render();
+        });
+
+        // ================================================================
+        // 8.  ОБРАБОТЧИКИ КНОПОК
+        // ================================================================
+
+        document.getElementById('themeToggle').addEventListener('click', function() {
+            toggleTheme();
+            localStorage.setItem('narxoz_theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+        });
+
+        document.getElementById('showSchedule').addEventListener('click', showScheduleModal);
+        document.getElementById('exportCsv').addEventListener('click', exportCSV);
+        document.getElementById('clearData').addEventListener('click', clearAllData);
+        document.getElementById('refreshView').addEventListener('click', render);
+
+        document.getElementById('showImportBtn').addEventListener('click', function() {
+            const area = document.getElementById('importArea');
+            area.style.display = area.style.display === 'none' ? 'block' : 'none';
+        });
+
+        document.getElementById('closeImportBtn').addEventListener('click', function() {
+            document.getElementById('importArea').style.display = 'none';
+        });
+
+        document.getElementById('importJsonBtn').addEventListener('click', function() {
+            const text = document.getElementById('jsonInput').value.trim();
+            if (!text) {
+                alert('Вставьте JSON в текстовое поле.');
+                return;
+            }
+            importJsonFromText(text);
+        });
+
+        if (localStorage.getItem('narxoz_theme') === 'dark') {
+            document.body.classList.add('dark');
+            document.getElementById('themeToggle').textContent = '☀️';
+        }
+
+        // ================================================================
+        // 9.  ИНИЦИАЛИЗАЦИЯ
+        // ================================================================
+        render();
+    })();
+</script>
+</body>
+</html>        body.dark .group-table td { border-color: #444; }
         .group-table tr.selected { background: #e3f2fd; }
         body.dark .group-table tr.selected { background: #1a3a5a; }
         .conflict-badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
