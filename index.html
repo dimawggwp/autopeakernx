@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Планировщик потоков Narxoz</title>
     <style>
-        /* ---- Общие стили ---- */
+        /* --------------------------------------
+           ОСНОВНЫЕ СТИЛИ (без дублирования)
+           -------------------------------------- */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
@@ -63,6 +65,7 @@
         .btn-secondary { background: #9e9e9e; color: #fff; }
         .btn-secondary:hover { background: #757575; }
         .btn-sm { padding: 4px 12px; font-size: 12px; }
+
         .stats {
             display: flex;
             flex-wrap: wrap;
@@ -79,6 +82,7 @@
             gap: 6px;
         }
         body.dark .stat { background: #3d3d3d; }
+
         .filters {
             display: flex;
             flex-wrap: wrap;
@@ -99,6 +103,7 @@
             color: #eee;
             border-color: #555;
         }
+
         .group {
             border: 1px solid #e8e8e8;
             border-radius: 12px;
@@ -127,6 +132,7 @@
             color: #888;
         }
         body.dark .group-header span:last-child { color: #aaa; }
+
         .group-table {
             width: 100%;
             border-collapse: collapse;
@@ -147,6 +153,7 @@
         body.dark .group-table td { border-color: #444; }
         .group-table tr.selected { background: #e3f2fd; }
         body.dark .group-table tr.selected { background: #1a3a5a; }
+
         .conflict-badge {
             display: inline-block;
             padding: 2px 10px;
@@ -158,6 +165,7 @@
         .conflict-no  { background: #e8f5e9; color: #1b5e20; }
         body.dark .conflict-yes { background: #4a2a2a; color: #ff8a80; }
         body.dark .conflict-no  { background: #2a4a2a; color: #81c784; }
+
         .seats {
             font-weight: bold;
             text-align: center;
@@ -166,6 +174,7 @@
         .seats-low  { color: #f57c00; }
         .seats-ok   { color: #2e7d32; }
         .seats-unknown { color: #888; }
+
         .schedule-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
@@ -200,6 +209,7 @@
         body.dark .lesson-card { background: #1a3a5a; }
         .lesson-card strong { display: block; font-size: 13px; }
         .empty-day { color: #ccc; text-align: center; font-size: 13px; padding-top: 20px; }
+
         .modal {
             position: fixed;
             top: 50%;
@@ -229,6 +239,7 @@
             cursor: pointer;
         }
         .modal h2 { margin-top: 0; }
+
         @media (max-width: 700px) {
             .container { padding: 15px; }
             .schedule-grid { grid-template-columns: repeat(2, 1fr); }
@@ -238,11 +249,9 @@
         @media (max-width: 450px) {
             .schedule-grid { grid-template-columns: 1fr; }
         }
-        .loader {
-            text-align: center;
-            padding: 40px;
-            color: #888;
-        }
+
+        .loader { text-align: center; padding: 40px; color: #888; }
+
         .bookmarklet-box {
             background: #f0f0f0;
             padding: 12px;
@@ -270,6 +279,7 @@
             background: #1e1e1e;
             color: #eee;
         }
+
         .update-btn-group {
             display: flex;
             gap: 12px;
@@ -290,6 +300,7 @@
             border-color: #555;
             color: #eee;
         }
+
         .import-area {
             margin: 15px 0;
             padding: 15px;
@@ -400,21 +411,21 @@
     (function() {
         'use strict';
 
-        // ================================================================
-        // 0.  НАСТРОЙКА – АДРЕС ВАШЕГО САЙТА (УЖЕ ПРАВИЛЬНЫЙ)
-        // ================================================================
+        // ------------------------------------------------------------
+        //  НАСТРОЙКА — ССЫЛКА НА ВАШ GitHub Pages (уже правильная)
+        // ------------------------------------------------------------
         const REDIRECT_URL = 'https://dimawggwp.github.io/autopeakernx/';
 
-        // ================================================================
-        // 1.  КОНСТАНТЫ
-        // ================================================================
+        // ------------------------------------------------------------
+        //  КОНСТАНТЫ
+        // ------------------------------------------------------------
         const STORAGE_KEY = 'narxoz_data';
         const PLAN_KEY = 'narxoz_plan';
         const DAYS = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
 
-        // ================================================================
-        // 2.  РАБОТА С ХРАНИЛИЩЕМ
-        // ================================================================
+        // ------------------------------------------------------------
+        //  РАБОТА С ХРАНИЛИЩЕМ
+        // ------------------------------------------------------------
         function loadData() {
             try {
                 const raw = localStorage.getItem(STORAGE_KEY);
@@ -443,9 +454,9 @@
             localStorage.setItem(PLAN_KEY, JSON.stringify(plan));
         }
 
-        // ================================================================
-        // 3.  ВРЕМЯ И КОНФЛИКТЫ
-        // ================================================================
+        // ------------------------------------------------------------
+        //  ВРЕМЯ И КОНФЛИКТЫ
+        // ------------------------------------------------------------
         function toMinutes(timeStr) {
             if (!timeStr) return 0;
             const parts = timeStr.split(':');
@@ -483,9 +494,9 @@
             return conflicts;
         }
 
-        // ================================================================
-        // 4.  РЕНДЕРИНГ
-        // ================================================================
+        // ------------------------------------------------------------
+        //  РЕНДЕРИНГ
+        // ------------------------------------------------------------
         let allStreams = [];
         let plan = {};
 
@@ -653,9 +664,9 @@
             });
         }
 
-        // ================================================================
-        // 5.  ДОПОЛНИТЕЛЬНЫЕ ДЕЙСТВИЯ
-        // ================================================================
+        // ------------------------------------------------------------
+        //  ДОПОЛНИТЕЛЬНЫЕ ДЕЙСТВИЯ (расписание, CSV, очистка)
+        // ------------------------------------------------------------
         function showScheduleModal() {
             const data = loadData();
             if (!data) return alert('Нет данных.');
@@ -734,19 +745,18 @@
             }
         }
 
-        // ================================================================
-        // 6.  ТЁМНАЯ ТЕМА
-        // ================================================================
+        // ------------------------------------------------------------
+        //  ТЁМНАЯ ТЕМА
+        // ------------------------------------------------------------
         function toggleTheme() {
             document.body.classList.toggle('dark');
             const btn = document.getElementById('themeToggle');
             btn.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
         }
 
-        // ================================================================
-        // 7.  ОБНОВЛЕНИЕ ДАННЫХ (кнопка + приём из URL + ручной импорт)
-        // ================================================================
-
+        // ------------------------------------------------------------
+        //  ОБНОВЛЕНИЕ ДАННЫХ (кнопка + приём из URL + ручной импорт)
+        // ------------------------------------------------------------
         function loadDataFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
             const encoded = urlParams.get('data');
@@ -908,10 +918,9 @@
             render();
         });
 
-        // ================================================================
-        // 8.  ОБРАБОТЧИКИ КНОПОК
-        // ================================================================
-
+        // ------------------------------------------------------------
+        //  ОБРАБОТЧИКИ КНОПОК
+        // ------------------------------------------------------------
         document.getElementById('themeToggle').addEventListener('click', function() {
             toggleTheme();
             localStorage.setItem('narxoz_theme', document.body.classList.contains('dark') ? 'dark' : 'light');
@@ -940,14 +949,15 @@
             importJsonFromText(text);
         });
 
+        // Восстановление темы
         if (localStorage.getItem('narxoz_theme') === 'dark') {
             document.body.classList.add('dark');
             document.getElementById('themeToggle').textContent = '☀️';
         }
 
-        // ================================================================
-        // 9.  ИНИЦИАЛИЗАЦИЯ
-        // ================================================================
+        // ------------------------------------------------------------
+        //  ЗАПУСК
+        // ------------------------------------------------------------
         render();
     })();
 </script>
